@@ -384,7 +384,7 @@
 
 <nav>
   <button class="active" data-page="overview" onclick="switchPage('overview')">Overview</button>
-  <button data-page="vp" onclick="switchPage('vp')">VP Tag Performance</button>
+  <button data-page="vp" onclick="switchPage('vp')">Campaign Theme</button>
   <button data-page="campaigns" onclick="switchPage('campaigns')">Campaign Feed</button>
   <button data-page="properties" onclick="switchPage('properties')">Properties</button>
 </nav>
@@ -394,7 +394,7 @@
   <div class="stats-grid" id="overviewStats"></div>
   <div class="charts-row">
     <div class="chart-card">
-      <h3>Campaigns by VP Tag</h3>
+      <h3>Campaigns by Theme</h3>
       <div class="chart-wrap"><canvas id="chartVP"></canvas></div>
     </div>
     <div class="chart-card">
@@ -418,12 +418,12 @@
 <div class="page" id="page-vp">
   <div id="vpGrid" class="vp-grid"></div>
   <div class="table-card">
-    <div class="table-card-header"><h3>Campaign VP Tag Breakdown</h3></div>
+    <div class="table-card-header"><h3>Campaign Theme Breakdown</h3></div>
     <div class="table-wrap">
       <table>
         <thead>
           <tr>
-            <th>VP Tag</th>
+            <th>Campaign Theme</th>
             <th>Campaigns</th>
             <th>Properties</th>
             <th>WhatsApp Clicks</th>
@@ -441,7 +441,7 @@
   <div class="filter-bar">
     <input type="text" id="campaignSearch" placeholder="Search campaign name…" oninput="renderCampaigns()">
     <select id="campaignVPFilter" onchange="renderCampaigns()">
-      <option value="">All VP Tags</option>
+      <option value="">All Themes</option>
       <option>Price Reduction</option>
       <option>Hot Property</option>
       <option>Exclusive</option>
@@ -476,7 +476,7 @@
           <tr>
             <th>Date</th>
             <th>Activity Name (UTM)</th>
-            <th>VP Tag</th>
+            <th>Campaign Theme</th>
             <th>Channel</th>
             <th>Status</th>
             <th>Properties</th>
@@ -495,7 +495,7 @@
   <div class="prop-filter-row">
     <input type="text" id="propSearch" placeholder="Search property ID or name…" oninput="renderProperties()" style="flex:1;min-width:200px;background:var(--surface);border:1px solid var(--border);border-radius:7px;color:var(--text);font-size:13px;padding:8px 12px;outline:none;">
     <select id="propVPFilter" onchange="renderProperties()" style="background:var(--surface);border:1px solid var(--border);border-radius:7px;color:var(--text);font-size:13px;padding:8px 12px;outline:none;">
-      <option value="">All VP Tags</option>
+      <option value="">All Value Positioning</option>
       <option>Price Reduction</option>
       <option>Below Market</option>
       <option>Distressed</option>
@@ -703,6 +703,8 @@ function fvs(record, fieldId) {
   return JSON.stringify(v);
 }
 
+// themeBadge = same colours as vpBadge, used for Campaign Theme labels
+function themeBadge(tag) { return vpBadge(tag); }
 function vpBadge(tag) {
   const map = {
     'Price Reduction': 'badge-pr',
@@ -996,7 +998,7 @@ function renderCampaigns() {
         <td>
           <code class="utm-code" onclick="copyUTM(event,'${utm}')" title="Click to copy UTM">${utm || '—'}</code>
         </td>
-        <td>${vpBadge(fvs(a, FIELDS.act.vp) || 'General')}</td>
+        <td>${themeBadge(fvs(a, FIELDS.act.vp) || 'General')}</td>
         <td>${channelBadge(fvs(a, FIELDS.act.channel))}</td>
         <td>${statusBadge(fvs(a, FIELDS.act.status))}</td>
         <td>${propCount}</td>
