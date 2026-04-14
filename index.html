@@ -1,0 +1,1187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RE Marketing Intelligence</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --surface: #1a1d27;
+      --surface2: #222535;
+      --border: #2e3248;
+      --text: #e8eaf0;
+      --text-muted: #7b7f96;
+      --accent: #4f6ef7;
+      --accent2: #8b5cf6;
+      --green: #22c55e;
+      --yellow: #eab308;
+      --red: #ef4444;
+      --orange: #f97316;
+      --cyan: #06b6d4;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+    header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 16px 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    header h1 {
+      font-size: 18px;
+      font-weight: 600;
+      letter-spacing: -0.3px;
+    }
+    header h1 span { color: var(--accent); }
+    .header-meta {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+    .refresh-btn {
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      padding: 7px 14px;
+      font-size: 13px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .refresh-btn:hover { opacity: 0.85; }
+    .refresh-btn.loading { opacity: 0.6; cursor: not-allowed; }
+
+    nav {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 0 32px;
+      display: flex;
+      gap: 4px;
+    }
+    nav button {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-size: 14px;
+      padding: 12px 16px;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      transition: all 0.15s;
+    }
+    nav button.active {
+      color: var(--text);
+      border-bottom-color: var(--accent);
+    }
+    nav button:hover:not(.active) { color: var(--text); }
+
+    .page { display: none; padding: 28px 32px; max-width: 1400px; margin: 0 auto; }
+    .page.active { display: block; }
+
+    /* Loading / error */
+    .loading-overlay {
+      position: fixed; inset: 0; background: rgba(15,17,23,0.85);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 999; flex-direction: column; gap: 12px;
+    }
+    .spinner {
+      width: 40px; height: 40px;
+      border: 3px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .loading-text { color: var(--text-muted); font-size: 14px; }
+
+    /* Stat cards */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 16px;
+      margin-bottom: 28px;
+    }
+    .stat-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 20px;
+    }
+    .stat-card .label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+    }
+    .stat-card .value {
+      font-size: 28px;
+      font-weight: 700;
+      line-height: 1;
+    }
+    .stat-card .sub {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 6px;
+    }
+
+    /* Charts */
+    .charts-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      margin-bottom: 28px;
+    }
+    @media (max-width: 900px) { .charts-row { grid-template-columns: 1fr; } }
+    .chart-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 20px;
+    }
+    .chart-card h3 {
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 16px;
+      color: var(--text);
+    }
+    .chart-wrap { position: relative; height: 220px; }
+
+    /* Tables */
+    .table-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+      margin-bottom: 24px;
+    }
+    .table-card-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .table-card-header h3 {
+      font-size: 14px;
+      font-weight: 600;
+    }
+    .table-wrap { overflow-x: auto; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+    th {
+      text-align: left;
+      padding: 10px 16px;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      color: var(--text-muted);
+      background: var(--surface2);
+      border-bottom: 1px solid var(--border);
+      white-space: nowrap;
+    }
+    td {
+      padding: 11px 16px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: middle;
+    }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: var(--surface2); }
+
+    /* Badges */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 9px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .badge-pr { background: rgba(239,68,68,0.15); color: #f87171; }
+    .badge-bm { background: rgba(34,197,94,0.15); color: #4ade80; }
+    .badge-dist { background: rgba(249,115,22,0.15); color: #fb923c; }
+    .badge-hd { background: rgba(6,182,212,0.15); color: #22d3ee; }
+    .badge-excl { background: rgba(139,92,246,0.15); color: #a78bfa; }
+    .badge-gen { background: rgba(107,114,128,0.15); color: #9ca3af; }
+    .badge-whatsapp { background: rgba(34,197,94,0.12); color: #4ade80; }
+    .badge-email { background: rgba(79,110,247,0.12); color: #818cf8; }
+    .badge-social { background: rgba(249,115,22,0.12); color: #fb923c; }
+    .badge-draft { background: rgba(234,179,8,0.12); color: #fbbf24; }
+    .badge-sent { background: rgba(34,197,94,0.12); color: #4ade80; }
+    .badge-archived { background: rgba(107,114,128,0.12); color: #6b7280; }
+
+    /* Search / filter bar */
+    .filter-bar {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 18px;
+      flex-wrap: wrap;
+    }
+    .filter-bar input, .filter-bar select {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      color: var(--text);
+      font-size: 13px;
+      padding: 8px 12px;
+      outline: none;
+    }
+    .filter-bar input { flex: 1; min-width: 200px; }
+    .filter-bar input:focus, .filter-bar select:focus {
+      border-color: var(--accent);
+    }
+
+    /* Campaign detail expand */
+    .expand-row td {
+      background: var(--surface2);
+      padding: 14px 16px;
+    }
+    .prop-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
+      margin-top: 8px;
+    }
+    .prop-chip {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 4px 10px;
+      font-size: 12px;
+      color: var(--text);
+    }
+    .prop-chip .pid { color: var(--text-muted); margin-right: 4px; }
+
+    /* UTM copy */
+    .utm-code {
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      padding: 3px 8px;
+      cursor: pointer;
+      color: var(--cyan);
+      transition: background 0.1s;
+    }
+    .utm-code:hover { background: var(--border); }
+
+    /* Empty state */
+    .empty {
+      text-align: center;
+      padding: 48px 20px;
+      color: var(--text-muted);
+      font-size: 14px;
+    }
+
+    /* VP Performance page */
+    .vp-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 16px;
+      margin-bottom: 28px;
+    }
+    .vp-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .vp-card-title {
+      font-size: 13px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .vp-dot {
+      width: 10px; height: 10px; border-radius: 50%;
+    }
+    .vp-stats {
+      display: flex;
+      gap: 20px;
+    }
+    .vp-stat-item { flex: 1; }
+    .vp-stat-item .n {
+      font-size: 22px;
+      font-weight: 700;
+    }
+    .vp-stat-item .l {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+    .vp-bar-wrap {
+      background: var(--bg);
+      border-radius: 4px;
+      height: 6px;
+      overflow: hidden;
+    }
+    .vp-bar { height: 100%; border-radius: 4px; transition: width 0.5s; }
+
+    /* Click counter */
+    .click-count {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 13px;
+    }
+    .click-count .num { font-weight: 600; }
+
+    /* Property page */
+    .prop-filter-row {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 18px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    /* Responsive */
+    @media (max-width: 700px) {
+      header, nav { padding-left: 16px; padding-right: 16px; }
+      .page { padding: 20px 16px; }
+      .charts-row { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- PAT Setup Modal -->
+<div id="patModal" style="display:none;position:fixed;inset:0;background:rgba(15,17,23,0.95);z-index:1000;display:flex;align-items:center;justify-content:center;">
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:36px;max-width:480px;width:100%;margin:20px">
+    <div style="font-size:22px;font-weight:700;margin-bottom:8px">RE Marketing Intelligence</div>
+    <div style="color:var(--text-muted);font-size:14px;margin-bottom:24px;line-height:1.5">
+      Enter your Airtable Personal Access Token to load data.<br>
+      It's saved in your browser only — never sent anywhere else.
+    </div>
+    <div style="margin-bottom:16px">
+      <label style="font-size:12px;text-transform:uppercase;letter-spacing:0.6px;color:var(--text-muted);display:block;margin-bottom:6px">Airtable PAT</label>
+      <input id="patInput" type="password" placeholder="patXXXXXX.XXXXXXXX"
+        style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:7px;color:var(--text);font-size:14px;padding:10px 12px;outline:none;font-family:monospace"
+        onkeydown="if(event.key==='Enter')savePAT()" />
+    </div>
+    <div style="display:flex;gap:10px;align-items:center">
+      <button onclick="savePAT()" style="background:var(--accent);color:#fff;border:none;border-radius:7px;padding:10px 20px;font-size:14px;cursor:pointer;font-weight:600">Connect</button>
+      <span id="patError" style="color:#f87171;font-size:13px;display:none">Invalid token — check and try again</span>
+    </div>
+    <div style="margin-top:20px;font-size:12px;color:var(--text-muted)">
+      Need a token? Airtable → Account → Developer hub → Personal access tokens.<br>
+      Scopes needed: <code style="color:var(--cyan)">data.records:read</code>
+    </div>
+  </div>
+</div>
+
+<div id="loadingOverlay" class="loading-overlay" style="display:none">
+  <div class="spinner"></div>
+  <div class="loading-text" id="loadingText">Loading campaign data…</div>
+</div>
+
+<header>
+  <h1>RE <span>Marketing Intelligence</span></h1>
+  <div style="display:flex;align-items:center;gap:14px">
+    <span class="header-meta" id="lastRefreshed"></span>
+    <button class="refresh-btn" id="refreshBtn" onclick="loadAll()">
+      ↻ Refresh
+    </button>
+  </div>
+</header>
+
+<nav>
+  <button class="active" data-page="overview" onclick="switchPage('overview')">Overview</button>
+  <button data-page="vp" onclick="switchPage('vp')">VP Tag Performance</button>
+  <button data-page="campaigns" onclick="switchPage('campaigns')">Campaign Feed</button>
+  <button data-page="properties" onclick="switchPage('properties')">Properties</button>
+</nav>
+
+<!-- OVERVIEW PAGE -->
+<div class="page active" id="page-overview">
+  <div class="stats-grid" id="overviewStats"></div>
+  <div class="charts-row">
+    <div class="chart-card">
+      <h3>Campaigns by VP Tag</h3>
+      <div class="chart-wrap"><canvas id="chartVP"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <h3>Campaigns Over Time (last 90 days)</h3>
+      <div class="chart-wrap"><canvas id="chartTimeline"></canvas></div>
+    </div>
+  </div>
+  <div class="charts-row">
+    <div class="chart-card">
+      <h3>Channel Mix</h3>
+      <div class="chart-wrap"><canvas id="chartChannel"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <h3>WhatsApp Clicks by Campaign (top 10)</h3>
+      <div class="chart-wrap"><canvas id="chartClicks"></canvas></div>
+    </div>
+  </div>
+</div>
+
+<!-- VP TAG PERFORMANCE PAGE -->
+<div class="page" id="page-vp">
+  <div id="vpGrid" class="vp-grid"></div>
+  <div class="table-card">
+    <div class="table-card-header"><h3>Campaign VP Tag Breakdown</h3></div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>VP Tag</th>
+            <th>Campaigns</th>
+            <th>Properties</th>
+            <th>WhatsApp Clicks</th>
+            <th>Avg Properties/Campaign</th>
+          </tr>
+        </thead>
+        <tbody id="vpTableBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- CAMPAIGN FEED PAGE -->
+<div class="page" id="page-campaigns">
+  <div class="filter-bar">
+    <input type="text" id="campaignSearch" placeholder="Search campaign name…" oninput="renderCampaigns()">
+    <select id="campaignVPFilter" onchange="renderCampaigns()">
+      <option value="">All VP Tags</option>
+      <option>Price Reduction</option>
+      <option>Hot Property</option>
+      <option>Exclusive</option>
+      <option>Distressed</option>
+      <option>Below Market</option>
+      <option>High Demand</option>
+      <option>General</option>
+    </select>
+    <select id="campaignChannelFilter" onchange="renderCampaigns()">
+      <option value="">All Channels</option>
+      <option>WhatsApp</option>
+      <option>Email</option>
+      <option>Social</option>
+      <option>Webinar</option>
+      <option>Broker Portal</option>
+    </select>
+    <select id="campaignStatusFilter" onchange="renderCampaigns()">
+      <option value="">All Statuses</option>
+      <option>Draft</option>
+      <option>Sent</option>
+      <option>Archived</option>
+    </select>
+  </div>
+  <div class="table-card">
+    <div class="table-card-header">
+      <h3>Campaign Feed</h3>
+      <span class="header-meta" id="campaignCount"></span>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Activity Name (UTM)</th>
+            <th>VP Tag</th>
+            <th>Channel</th>
+            <th>Status</th>
+            <th>Properties</th>
+            <th>WA Clicks</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="campaignTableBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- PROPERTIES PAGE -->
+<div class="page" id="page-properties">
+  <div class="prop-filter-row">
+    <input type="text" id="propSearch" placeholder="Search property ID or name…" oninput="renderProperties()" style="flex:1;min-width:200px;background:var(--surface);border:1px solid var(--border);border-radius:7px;color:var(--text);font-size:13px;padding:8px 12px;outline:none;">
+    <select id="propVPFilter" onchange="renderProperties()" style="background:var(--surface);border:1px solid var(--border);border-radius:7px;color:var(--text);font-size:13px;padding:8px 12px;outline:none;">
+      <option value="">All VP Tags</option>
+      <option>Price Reduction</option>
+      <option>Below Market</option>
+      <option>Distressed</option>
+      <option>High Demand</option>
+      <option>Exclusive</option>
+    </select>
+  </div>
+  <div class="stats-grid" id="propStats"></div>
+  <div class="table-card">
+    <div class="table-card-header">
+      <h3>Properties</h3>
+      <span class="header-meta" id="propCount"></span>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Property ID</th>
+            <th>Name</th>
+            <th>Project</th>
+            <th>Current TSP</th>
+            <th>VP Tags</th>
+            <th>Campaigns</th>
+          </tr>
+        </thead>
+        <tbody id="propTableBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── CONFIG ───────────────────────────────────────────────────────────────────
+let PAT = localStorage.getItem('re_mi_pat') || '';
+const BASES = {
+  listingsFunnel: 'appNhozNoSGPPdGnY',
+  growth:         'appfpvMsWzOFxl8ug'
+};
+const TABLES = {
+  activities:  'tblsWK8RXw8VNeFTS',
+  selections:  'tblF9wdQf6QufyD6G',
+  properties:  'tblWgZzZpYv9M32vf',
+  waClicks:    'tblqYaCAsJYNpQ0FS'
+};
+const FIELDS = {
+  act: {
+    name:     'fldStbwMpW0oXEbZc',
+    date:     'fldUkuSu4lF8UXNtV',
+    channel:  'fldImibnktTE7feSt',
+    vp:       'fld7GhliyyCKBKZWr',
+    status:   'fldOZW9dKXrTZf6Tq'
+  },
+  sel: {
+    property: 'fldUqHnkVcgaAP4pA',
+    activity: 'fld9xGPoZv4smO5sk'
+  },
+  prop: {
+    propId:   'fldIkN48DwGpdbC8t',
+    name:     'fldk8nxO9W0hYtt5R',
+    tsp:      'fldzrC46kfXzQVP9c',
+    vp:       'fldKfYlUH6ZknASmT',
+    project:  'fldy5OeysNqGZTSdo'
+  },
+  wa: {
+    campaign: 'fldDI6gQPngv9AG95',
+    created:  'fldK28NWVpgdb5I2X'
+  }
+};
+
+// ─── STATE ────────────────────────────────────────────────────────────────────
+let state = {
+  activities: [],
+  selections: [],
+  properties: [],
+  waClicks: [],
+  // derived
+  actMap: {},        // id → activity
+  selsByAct: {},     // actId → [selection]
+  propMap: {},       // recordId → property
+  propIdMap: {},     // PROP-XX-XXXXX → property
+  clicksByUTM: {},   // utmName → count
+  propCampaigns: {}  // propRecordId → [activityIds]
+};
+
+let expandedCampaign = null;
+let charts = {};
+
+// ─── API ──────────────────────────────────────────────────────────────────────
+async function fetchAll(baseId, tableId, fields) {
+  const results = [];
+  let offset = null;
+  const fieldParam = fields.map(f => `fields%5B%5D=${f}`).join('&');
+  do {
+    const url = `https://api.airtable.com/v0/${baseId}/${tableId}?${fieldParam}${offset ? '&offset=' + offset : ''}`;
+    const res = await fetch(url, { headers: { Authorization: `Bearer ${PAT}` } });
+    if (!res.ok) throw new Error(`Airtable error ${res.status}: ${await res.text()}`);
+    const data = await res.json();
+    results.push(...data.records);
+    offset = data.offset;
+  } while (offset);
+  return results;
+}
+
+// ─── LOAD ─────────────────────────────────────────────────────────────────────
+async function loadAll() {
+  const overlay = document.getElementById('loadingOverlay');
+  const loadingText = document.getElementById('loadingText');
+  const btn = document.getElementById('refreshBtn');
+  overlay.style.display = 'flex';
+  btn.classList.add('loading');
+
+  try {
+    loadingText.textContent = 'Loading marketing activities…';
+    state.activities = await fetchAll(BASES.listingsFunnel, TABLES.activities,
+      Object.values(FIELDS.act));
+
+    loadingText.textContent = 'Loading campaign selections…';
+    state.selections = await fetchAll(BASES.listingsFunnel, TABLES.selections,
+      Object.values(FIELDS.sel));
+
+    loadingText.textContent = 'Loading properties…';
+    state.properties = await fetchAll(BASES.listingsFunnel, TABLES.properties,
+      Object.values(FIELDS.prop));
+
+    loadingText.textContent = 'Loading WhatsApp clicks…';
+    state.waClicks = await fetchAll(BASES.growth, TABLES.waClicks,
+      [FIELDS.wa.campaign, FIELDS.wa.created]);
+
+    buildDerived();
+    renderAll();
+
+    document.getElementById('lastRefreshed').textContent =
+      'Updated ' + new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+  } catch (err) {
+    loadingText.textContent = '⚠ Error: ' + err.message;
+    setTimeout(() => { overlay.style.display = 'none'; }, 4000);
+    console.error(err);
+    return;
+  }
+
+  overlay.style.display = 'none';
+  btn.classList.remove('loading');
+}
+
+function buildDerived() {
+  // actMap
+  state.actMap = {};
+  for (const a of state.activities) state.actMap[a.id] = a;
+
+  // selsByAct
+  state.selsByAct = {};
+  for (const s of state.selections) {
+    const acts = s.fields[FIELDS.sel.activity] || [];
+    for (const actId of acts) {
+      if (!state.selsByAct[actId]) state.selsByAct[actId] = [];
+      state.selsByAct[actId].push(s);
+    }
+  }
+
+  // propMap, propIdMap
+  state.propMap = {};
+  state.propIdMap = {};
+  for (const p of state.properties) {
+    state.propMap[p.id] = p;
+    const pid = p.fields[FIELDS.prop.propId];
+    if (pid) state.propIdMap[pid] = p;
+  }
+
+  // clicksByUTM
+  state.clicksByUTM = {};
+  for (const c of state.waClicks) {
+    const utm = (c.fields[FIELDS.wa.campaign] || '').trim().toLowerCase();
+    if (utm) state.clicksByUTM[utm] = (state.clicksByUTM[utm] || 0) + 1;
+  }
+
+  // propCampaigns: which campaigns featured each property
+  state.propCampaigns = {};
+  for (const s of state.selections) {
+    const props = s.fields[FIELDS.sel.property] || [];
+    const acts = s.fields[FIELDS.sel.activity] || [];
+    for (const pid of props) {
+      if (!state.propCampaigns[pid]) state.propCampaigns[pid] = new Set();
+      for (const aid of acts) state.propCampaigns[pid].add(aid);
+    }
+  }
+}
+
+// ─── RENDER ALL ───────────────────────────────────────────────────────────────
+function renderAll() {
+  renderOverview();
+  renderVP();
+  renderCampaigns();
+  renderProperties();
+}
+
+// ─── HELPERS ──────────────────────────────────────────────────────────────────
+function fv(record, fieldId) {
+  return record.fields[fieldId] ?? null;
+}
+function fvs(record, fieldId) {
+  const v = record.fields[fieldId];
+  if (v === null || v === undefined) return '';
+  if (typeof v === 'string') return v;
+  if (typeof v === 'number') return String(v);
+  return JSON.stringify(v);
+}
+
+function vpBadge(tag) {
+  const map = {
+    'Price Reduction': 'badge-pr',
+    'Below Market':    'badge-bm',
+    'Distressed':      'badge-dist',
+    'High Demand':     'badge-hd',
+    'Exclusive':       'badge-excl',
+    'Hot Property':    'badge-hd',
+    'General':         'badge-gen'
+  };
+  return `<span class="badge ${map[tag] || 'badge-gen'}">${tag}</span>`;
+}
+function channelBadge(ch) {
+  const map = {
+    'WhatsApp': 'badge-whatsapp',
+    'Email':    'badge-email',
+    'Social':   'badge-social'
+  };
+  return `<span class="badge ${map[ch] || 'badge-gen'}">${ch || '—'}</span>`;
+}
+function statusBadge(s) {
+  const map = { 'Draft': 'badge-draft', 'Sent': 'badge-sent', 'Archived': 'badge-archived' };
+  return `<span class="badge ${map[s] || 'badge-gen'}">${s || '—'}</span>`;
+}
+function fmt(n) {
+  if (n === null || n === undefined) return '—';
+  return 'AED ' + Number(n).toLocaleString('en-AE', { maximumFractionDigits: 0 });
+}
+function fmtDate(d) {
+  if (!d) return '—';
+  return new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+function getUTMClicks(actRecord) {
+  const name = (fvs(actRecord, FIELDS.act.name) || '').toLowerCase().trim();
+  return state.clicksByUTM[name] || 0;
+}
+
+const VP_COLORS = {
+  'Price Reduction': '#ef4444',
+  'Below Market':    '#22c55e',
+  'Distressed':      '#f97316',
+  'High Demand':     '#06b6d4',
+  'Exclusive':       '#8b5cf6',
+  'Hot Property':    '#0ea5e9',
+  'General':         '#6b7280'
+};
+
+// ─── OVERVIEW PAGE ────────────────────────────────────────────────────────────
+function renderOverview() {
+  const acts = state.activities;
+  const sent = acts.filter(a => fvs(a, FIELDS.act.status) === 'Sent');
+  const draft = acts.filter(a => fvs(a, FIELDS.act.status) === 'Draft');
+
+  // total WA clicks
+  const totalClicks = Object.values(state.clicksByUTM).reduce((a, b) => a + b, 0);
+  // total properties ever selected
+  const uniqueProps = new Set(state.selections.flatMap(s => s.fields[FIELDS.sel.property] || []));
+  // recent activity (last 30d)
+  const cutoff30 = new Date(); cutoff30.setDate(cutoff30.getDate() - 30);
+  const recent = sent.filter(a => {
+    const d = fvs(a, FIELDS.act.date);
+    return d && new Date(d) >= cutoff30;
+  });
+
+  document.getElementById('overviewStats').innerHTML = `
+    <div class="stat-card">
+      <div class="label">Total Campaigns</div>
+      <div class="value">${acts.length}</div>
+      <div class="sub">${sent.length} sent · ${draft.length} draft</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">Last 30 Days</div>
+      <div class="value" style="color:var(--accent)">${recent.length}</div>
+      <div class="sub">campaigns sent</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">Properties Selected</div>
+      <div class="value">${uniqueProps.size}</div>
+      <div class="sub">unique across all campaigns</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">WA Clicks Tracked</div>
+      <div class="value" style="color:var(--green)">${totalClicks.toLocaleString()}</div>
+      <div class="sub">via UTM attribution</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">Total Selections</div>
+      <div class="value">${state.selections.length}</div>
+      <div class="sub">property × campaign rows</div>
+    </div>
+  `;
+
+  // Chart: campaigns by VP tag
+  const vpCounts = {};
+  for (const a of acts) {
+    const vp = fvs(a, FIELDS.act.vp) || 'General';
+    vpCounts[vp] = (vpCounts[vp] || 0) + 1;
+  }
+  renderDonut('chartVP', Object.keys(vpCounts), Object.values(vpCounts));
+
+  // Chart: timeline (last 90 days, grouped by week)
+  const cutoff90 = new Date(); cutoff90.setDate(cutoff90.getDate() - 90);
+  const weekMap = {};
+  for (const a of sent) {
+    const d = fvs(a, FIELDS.act.date);
+    if (!d || new Date(d) < cutoff90) continue;
+    const dt = new Date(d);
+    // Monday of that week
+    const day = dt.getDay();
+    const diff = dt.getDate() - day + (day === 0 ? -6 : 1);
+    dt.setDate(diff);
+    const key = dt.toISOString().slice(0, 10);
+    weekMap[key] = (weekMap[key] || 0) + 1;
+  }
+  const sortedWeeks = Object.keys(weekMap).sort();
+  renderBar('chartTimeline', sortedWeeks.map(w => {
+    const d = new Date(w);
+    return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
+  }), sortedWeeks.map(w => weekMap[w]), 'var(--accent)');
+
+  // Chart: channel mix
+  const chCounts = {};
+  for (const a of acts) {
+    const ch = fvs(a, FIELDS.act.channel) || 'Unknown';
+    chCounts[ch] = (chCounts[ch] || 0) + 1;
+  }
+  renderDonut('chartChannel', Object.keys(chCounts), Object.values(chCounts));
+
+  // Chart: WA clicks by campaign (top 10)
+  const clickEntries = Object.entries(state.clicksByUTM)
+    .sort((a, b) => b[1] - a[1]).slice(0, 10);
+  renderBar('chartClicks',
+    clickEntries.map(([k]) => k.length > 30 ? k.slice(0, 28) + '…' : k),
+    clickEntries.map(([, v]) => v),
+    'var(--green)', true);
+}
+
+function renderDonut(id, labels, data) {
+  if (charts[id]) charts[id].destroy();
+  const ctx = document.getElementById(id).getContext('2d');
+  const colors = labels.map(l => VP_COLORS[l] || '#4f6ef7');
+  charts[id] = new Chart(ctx, {
+    type: 'doughnut',
+    data: { labels, datasets: [{ data, backgroundColor: colors, borderWidth: 1, borderColor: '#1a1d27' }] },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'right', labels: { color: '#7b7f96', font: { size: 11 }, padding: 10, boxWidth: 12 } }
+      }
+    }
+  });
+}
+
+function renderBar(id, labels, data, color, horizontal = false) {
+  if (charts[id]) charts[id].destroy();
+  const ctx = document.getElementById(id).getContext('2d');
+  charts[id] = new Chart(ctx, {
+    type: horizontal ? 'bar' : 'bar',
+    data: {
+      labels,
+      datasets: [{
+        data,
+        backgroundColor: color,
+        borderRadius: 4,
+        borderSkipped: false
+      }]
+    },
+    options: {
+      indexAxis: horizontal ? 'y' : 'x',
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { color: '#2e3248' }, ticks: { color: '#7b7f96', font: { size: 10 } } },
+        y: { grid: { color: '#2e3248' }, ticks: { color: '#7b7f96', font: { size: 10 } } }
+      }
+    }
+  });
+}
+
+// ─── VP TAG PERFORMANCE ───────────────────────────────────────────────────────
+function renderVP() {
+  const allVPs = ['Price Reduction', 'Hot Property', 'Exclusive', 'Distressed', 'Below Market', 'High Demand', 'General'];
+
+  // per-tag stats
+  const stats = {};
+  for (const vp of allVPs) stats[vp] = { campaigns: 0, properties: new Set(), clicks: 0 };
+
+  for (const a of state.activities) {
+    const vp = fvs(a, FIELDS.act.vp) || 'General';
+    if (!stats[vp]) continue;
+    stats[vp].campaigns++;
+    const sels = state.selsByAct[a.id] || [];
+    for (const s of sels) {
+      for (const pid of (s.fields[FIELDS.sel.property] || [])) stats[vp].properties.add(pid);
+    }
+    stats[vp].clicks += getUTMClicks(a);
+  }
+
+  // Also count VP tags on properties themselves (current state)
+  const propVPCounts = {};
+  for (const p of state.properties) {
+    const tags = p.fields[FIELDS.prop.vp] || [];
+    for (const t of tags) {
+      const name = t.name || t;
+      propVPCounts[name] = (propVPCounts[name] || 0) + 1;
+    }
+  }
+
+  const maxCampaigns = Math.max(...allVPs.map(v => stats[v].campaigns), 1);
+
+  document.getElementById('vpGrid').innerHTML = allVPs.map(vp => {
+    const s = stats[vp];
+    const color = VP_COLORS[vp] || '#6b7280';
+    const pct = (s.campaigns / maxCampaigns * 100).toFixed(0);
+    const propNow = propVPCounts[vp] || 0;
+    return `
+      <div class="vp-card">
+        <div class="vp-card-title">
+          <div class="vp-dot" style="background:${color}"></div>
+          ${vpBadge(vp)}
+        </div>
+        <div class="vp-stats">
+          <div class="vp-stat-item"><div class="n">${s.campaigns}</div><div class="l">Campaigns</div></div>
+          <div class="vp-stat-item"><div class="n">${s.properties.size}</div><div class="l">Unique Props</div></div>
+          <div class="vp-stat-item"><div class="n" style="color:var(--green)">${s.clicks.toLocaleString()}</div><div class="l">WA Clicks</div></div>
+        </div>
+        <div class="vp-bar-wrap">
+          <div class="vp-bar" style="width:${pct}%;background:${color}"></div>
+        </div>
+        <div style="font-size:11px;color:var(--text-muted)">${propNow} properties currently tagged</div>
+      </div>
+    `;
+  }).join('');
+
+  // Table
+  document.getElementById('vpTableBody').innerHTML = allVPs.map(vp => {
+    const s = stats[vp];
+    const avg = s.campaigns > 0 ? (s.properties.size / s.campaigns).toFixed(1) : '—';
+    return `
+      <tr>
+        <td>${vpBadge(vp)}</td>
+        <td>${s.campaigns}</td>
+        <td>${s.properties.size}</td>
+        <td style="color:var(--green)">${s.clicks.toLocaleString()}</td>
+        <td>${avg}</td>
+      </tr>
+    `;
+  }).join('');
+}
+
+// ─── CAMPAIGN FEED ────────────────────────────────────────────────────────────
+function renderCampaigns() {
+  const search = document.getElementById('campaignSearch').value.toLowerCase();
+  const vpF = document.getElementById('campaignVPFilter').value;
+  const chF = document.getElementById('campaignChannelFilter').value;
+  const stF = document.getElementById('campaignStatusFilter').value;
+
+  let filtered = state.activities.filter(a => {
+    const name = fvs(a, FIELDS.act.name).toLowerCase();
+    if (search && !name.includes(search)) return false;
+    if (vpF && fvs(a, FIELDS.act.vp) !== vpF) return false;
+    if (chF && fvs(a, FIELDS.act.channel) !== chF) return false;
+    if (stF && fvs(a, FIELDS.act.status) !== stF) return false;
+    return true;
+  });
+
+  // Sort by date desc
+  filtered.sort((a, b) => {
+    const da = fvs(a, FIELDS.act.date), db = fvs(b, FIELDS.act.date);
+    return new Date(db) - new Date(da);
+  });
+
+  document.getElementById('campaignCount').textContent = `${filtered.length} campaigns`;
+
+  if (filtered.length === 0) {
+    document.getElementById('campaignTableBody').innerHTML =
+      `<tr><td colspan="8"><div class="empty">No campaigns match your filters.</div></td></tr>`;
+    return;
+  }
+
+  document.getElementById('campaignTableBody').innerHTML = filtered.map(a => {
+    const sels = state.selsByAct[a.id] || [];
+    const propCount = new Set(sels.flatMap(s => s.fields[FIELDS.sel.property] || [])).size;
+    const clicks = getUTMClicks(a);
+    const utm = fvs(a, FIELDS.act.name);
+    const isExpanded = expandedCampaign === a.id;
+
+    return `
+      <tr data-id="${a.id}" onclick="toggleExpand('${a.id}')" style="cursor:pointer">
+        <td>${fmtDate(fvs(a, FIELDS.act.date))}</td>
+        <td>
+          <code class="utm-code" onclick="copyUTM(event,'${utm}')" title="Click to copy UTM">${utm || '—'}</code>
+        </td>
+        <td>${vpBadge(fvs(a, FIELDS.act.vp) || 'General')}</td>
+        <td>${channelBadge(fvs(a, FIELDS.act.channel))}</td>
+        <td>${statusBadge(fvs(a, FIELDS.act.status))}</td>
+        <td>${propCount}</td>
+        <td>${clicks > 0 ? `<span class="click-count"><span class="num" style="color:var(--green)">${clicks}</span></span>` : '<span style="color:var(--text-muted)">—</span>'}</td>
+        <td style="color:var(--text-muted);font-size:16px">${isExpanded ? '▾' : '▸'}</td>
+      </tr>
+      ${isExpanded ? buildExpandRow(a) : ''}
+    `;
+  }).join('');
+}
+
+function buildExpandRow(a) {
+  const sels = state.selsByAct[a.id] || [];
+  const propIds = new Set(sels.flatMap(s => s.fields[FIELDS.sel.property] || []));
+  const props = [...propIds].map(id => state.propMap[id]).filter(Boolean);
+
+  const propChips = props.length > 0
+    ? props.map(p => {
+        const pid = fvs(p, FIELDS.prop.propId);
+        const name = fvs(p, FIELDS.prop.name);
+        const tsp = fv(p, FIELDS.prop.tsp);
+        return `<div class="prop-chip"><span class="pid">${pid}</span>${name || '—'} · ${fmt(tsp)}</div>`;
+      }).join('')
+    : '<span style="color:var(--text-muted);font-size:12px">No properties linked</span>';
+
+  const clicks = getUTMClicks(a);
+  const utm = fvs(a, FIELDS.act.name);
+
+  return `
+    <tr class="expand-row">
+      <td colspan="8">
+        <div style="display:flex;gap:24px;align-items:flex-start;flex-wrap:wrap">
+          <div>
+            <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.6px;margin-bottom:4px">UTM / Activity Name</div>
+            <code class="utm-code" onclick="copyUTM(event,'${utm}')">${utm || '—'}</code>
+          </div>
+          <div>
+            <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.6px;margin-bottom:4px">WhatsApp Clicks</div>
+            <div style="font-size:20px;font-weight:700;color:var(--green)">${clicks}</div>
+          </div>
+          <div>
+            <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.6px;margin-bottom:4px">Properties Included (${props.length})</div>
+            <div class="prop-chips">${propChips}</div>
+          </div>
+        </div>
+      </td>
+    </tr>
+  `;
+}
+
+function toggleExpand(id) {
+  expandedCampaign = expandedCampaign === id ? null : id;
+  renderCampaigns();
+}
+
+function copyUTM(evt, utm) {
+  evt.stopPropagation();
+  navigator.clipboard.writeText(utm).then(() => {
+    const el = evt.target;
+    const orig = el.textContent;
+    el.textContent = '✓ copied';
+    setTimeout(() => { el.textContent = orig; }, 1200);
+  });
+}
+
+// ─── PROPERTIES PAGE ──────────────────────────────────────────────────────────
+function renderProperties() {
+  const search = document.getElementById('propSearch').value.toLowerCase();
+  const vpF = document.getElementById('propVPFilter').value;
+
+  let filtered = state.properties.filter(p => {
+    const pid = fvs(p, FIELDS.prop.propId).toLowerCase();
+    const name = fvs(p, FIELDS.prop.name).toLowerCase();
+    if (search && !pid.includes(search) && !name.includes(search)) return false;
+    if (vpF) {
+      const tags = (p.fields[FIELDS.prop.vp] || []).map(t => t.name || t);
+      if (!tags.includes(vpF)) return false;
+    }
+    return true;
+  });
+
+  // Sort by most campaigned first
+  filtered.sort((a, b) => {
+    const ca = (state.propCampaigns[a.id] || new Set()).size;
+    const cb = (state.propCampaigns[b.id] || new Set()).size;
+    return cb - ca;
+  });
+
+  document.getElementById('propCount').textContent = `${filtered.length} properties`;
+
+  // Stats
+  const taggedCount = state.properties.filter(p => (p.fields[FIELDS.prop.vp] || []).length > 0).length;
+  const campaignedCount = Object.keys(state.propCampaigns).length;
+  document.getElementById('propStats').innerHTML = `
+    <div class="stat-card">
+      <div class="label">Total Properties</div>
+      <div class="value">${state.properties.length}</div>
+      <div class="sub">in Listings Funnel</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">VP Tagged</div>
+      <div class="value" style="color:var(--accent)">${taggedCount}</div>
+      <div class="sub">have at least one VP tag</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">Campaigned</div>
+      <div class="value" style="color:var(--cyan)">${campaignedCount}</div>
+      <div class="sub">featured in at least 1 campaign</div>
+    </div>
+  `;
+
+  if (filtered.length === 0) {
+    document.getElementById('propTableBody').innerHTML =
+      `<tr><td colspan="6"><div class="empty">No properties match your filters.</div></td></tr>`;
+    return;
+  }
+
+  document.getElementById('propTableBody').innerHTML = filtered.slice(0, 200).map(p => {
+    const tags = (p.fields[FIELDS.prop.vp] || []).map(t => t.name || t);
+    const campaigns = (state.propCampaigns[p.id] || new Set()).size;
+    return `
+      <tr>
+        <td style="font-family:monospace;font-size:12px;color:var(--text-muted)">${fvs(p, FIELDS.prop.propId)}</td>
+        <td>${fvs(p, FIELDS.prop.name) || '—'}</td>
+        <td style="color:var(--text-muted)">${fvs(p, FIELDS.prop.project) || '—'}</td>
+        <td style="font-weight:600">${fmt(fv(p, FIELDS.prop.tsp))}</td>
+        <td>${tags.length > 0 ? tags.map(vpBadge).join(' ') : '<span style="color:var(--text-muted);font-size:12px">—</span>'}</td>
+        <td>${campaigns > 0 ? `<span style="color:var(--cyan);font-weight:600">${campaigns}</span>` : '<span style="color:var(--text-muted)">—</span>'}</td>
+      </tr>
+    `;
+  }).join('');
+}
+
+// ─── NAV ──────────────────────────────────────────────────────────────────────
+function switchPage(id) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+  document.getElementById('page-' + id).classList.add('active');
+  document.querySelector(`nav button[data-page="${id}"]`).classList.add('active');
+}
+
+// ─── PAT SETUP ───────────────────────────────────────────────────────────────
+function savePAT() {
+  const val = document.getElementById('patInput').value.trim();
+  if (!val.startsWith('pat')) {
+    document.getElementById('patError').style.display = 'inline';
+    return;
+  }
+  PAT = val;
+  localStorage.setItem('re_mi_pat', val);
+  document.getElementById('patModal').style.display = 'none';
+  loadAll();
+}
+
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+if (!PAT) {
+  document.getElementById('patModal').style.display = 'flex';
+} else {
+  loadAll();
+}
+</script>
+</body>
+</html>
